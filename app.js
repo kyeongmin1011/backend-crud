@@ -1,7 +1,14 @@
 const express = require('express')
 const app = express()
+const argon2 = require('argon2');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
+const {validUser} = require('./middleware/auth')
+
 app.use(express.json());
+app.use(cookieParser())
 app.use(express.urlencoded({ extended: false }));
+
 
 const database = [
   { id: 1, title: '글1' },
@@ -62,41 +69,57 @@ app.delete('/database', (req, res) => {
 })
 
 
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // GET : 회원 조회
 app.get('/users', (req, res) => {
   res.send(userData)
 })
 
 
+// 클라이언트에 cookie 로 보내는 방법
+app.get('/secure_data', validUser, (req, res) => {
+  res.send('인증된 사용자만 쓸 수 있는 API')
+})
+
 // POST : 회원추가
-app.post('/signup', (req, res) => {
+app.post('/signup', async (req, res) => {
   const {username, password, age, birthday} = req.body;
+  const hash = await argon2.hash(password);
   userData.push({
     username,
-    password,
+    password: hash, // pw 암호화 하기위해 쓴 라이브러리
     age,
     birthday
   })
   res.send('success')
 })
 
-
-app.post('/login', (req, res) => {
+// POST : 로그인
+app.post('/login', async (req, res) => {
   const {username, password} = req.body;
   const user = userData.filter((user) => {
     return user.username === username // DB안에 이름 === 작성한 이름
   })
 
   if (user.length === 0) {
-    res.send('해당하는 id가 없습니다.');
+    res.status(403).send('해당하는 id가 없습니다.');
     return
   }
 
-  if (user[0].password !== password) {
-    res.send('패스워드가 틀립니다.')
+  if (!(await argon2.verify(user[0].password, password))) {
+    res.status(403).send('패스워드가 틀립니다.')
     return
   }
 
+  const access_token = jwt.sign({ username }, 'secure');
+  res.cookie('access_token', access_token, {
+    httpOnly: true
+  })
   res.send('로그인 성공!')
 })
 
