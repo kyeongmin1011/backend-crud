@@ -9,6 +9,10 @@ const database = [
   { id: 3, title: '글3' },
 ]
 
+const userData =  [
+  {id: 1, username: 'min', password: 'min'}
+]
+
 
 // 첫 페이지
 app.get('/', function (req, res) {
@@ -56,6 +60,46 @@ app.delete('/database', (req, res) => {
   database.splice(id - 1,1)
   res.send('값 삭제가 완료되었습니다.')
 })
+
+
+// GET : 회원 조회
+app.get('/users', (req, res) => {
+  res.send(userData)
+})
+
+
+// POST : 회원추가
+app.post('/signup', (req, res) => {
+  const {username, password, age, birthday} = req.body;
+  userData.push({
+    username,
+    password,
+    age,
+    birthday
+  })
+  res.send('success')
+})
+
+
+app.post('/login', (req, res) => {
+  const {username, password} = req.body;
+  const user = userData.filter((user) => {
+    return user.username === username // DB안에 이름 === 작성한 이름
+  })
+
+  if (user.length === 0) {
+    res.send('해당하는 id가 없습니다.');
+    return
+  }
+
+  if (user[0].password !== password) {
+    res.send('패스워드가 틀립니다.')
+    return
+  }
+
+  res.send('로그인 성공!')
+})
+
 
 
 app.listen(3000, () => {
